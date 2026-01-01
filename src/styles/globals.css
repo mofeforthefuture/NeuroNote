@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background-primary: 10 10 10;
+    --background-secondary: 18 18 18;
+    --background-tertiary: 26 26 26;
+    --background-elevated: 36 36 36;
+
+    --foreground-primary: 245 245 245;
+    --foreground-secondary: 212 212 212;
+    --foreground-tertiary: 163 163 163;
+    --foreground-inverse: 10 10 10;
+
+    --primary: 59 130 246;
+    --primary-hover: 37 99 235;
+    --primary-active: 29 78 216;
+
+    --secondary: 75 85 99;
+    --secondary-hover: 107 114 128;
+    --secondary-active: 55 65 81;
+
+    --success: 16 185 129;
+    --info: 59 130 246;
+    --warning: 245 158 11;
+    --error: 239 68 68;
+
+    --border: 42 42 42;
+    --border-hover: 58 58 58;
+    --border-focus: 59 130 246;
+    --border-divider: 26 26 26;
+
+    --ring: 59 130 246;
+    --ring-error: 239 68 68;
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background-primary text-foreground-primary;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus visible styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background-primary;
+  }
+
+  /* Reduced motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar for dark mode */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(42 42 42) rgb(10 10 10);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(10 10 10);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(42 42 42);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(58 58 58);
+  }
+}
+
