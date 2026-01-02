@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase'
+import { useToast } from '@/components/ui/use-toast'
 import type { SignInForm } from '@/types'
 
 /**
@@ -13,6 +15,7 @@ import type { SignInForm } from '@/types'
  */
 export function SignInPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [formData, setFormData] = useState<SignInForm>({
     email: '',
     password: '',
@@ -22,12 +25,30 @@ export function SignInPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
-    // TODO: Implement authentication
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    
-    setIsLoading(false)
-    navigate('/dashboard')
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: 'Signed in successfully',
+        variant: 'success',
+      })
+
+      navigate('/dashboard')
+    } catch (error) {
+      toast({
+        title: 'Sign in failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'error',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

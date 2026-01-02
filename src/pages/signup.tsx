@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { supabase } from '@/lib/supabase'
+import { useToast } from '@/components/ui/use-toast'
 import type { SignUpForm } from '@/types'
 
 /**
@@ -14,6 +16,7 @@ import type { SignUpForm } from '@/types'
  */
 export function SignUpPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [formData, setFormData] = useState<SignUpForm>({
     email: '',
     password: '',
@@ -24,19 +27,134 @@ export function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (formData.password !== formData.confirmPassword) {
-      // TODO: Show error toast
+      toast({
+        title: 'Passwords do not match',
+        description: 'Please make sure both passwords are the same',
+        variant: 'error',
+      })
+      return
+    }
+
+    if (formData.password.length < 8) {
+      toast({
+        title: 'Password too short',
+        description: 'Password must be at least 8 characters',
+        variant: 'error',
+      })
       return
     }
 
     setIsLoading(true)
-    
-    // TODO: Implement registration
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    
-    setIsLoading(false)
-    navigate('/dashboard')
+
+    try {
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      })
+
+      if (authError) {
+        console.error('Auth error:', authError)
+        
+        // Handle rate limiting specifically
+        if (authError.message.includes('For security purposes')) {
+          const match = authError.message.match(/(\d+) seconds/)
+          const seconds = match ? match[1] : '60'
+          throw new Error(`Too many signup attempts. Please wait ${seconds} seconds before trying again.`)
+        }
+        
+        throw authError
+      }
+
+      if (!authData.user) {
+        throw new Error('Failed to create user - no user data returned')
+      }
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          is_medical_field: formData.isMedicalField,
+          country_code: null, // Will be auto-detected or set later
+        })
+
+      if (profileError) {
+        console.error('Profile error:', profileError)
+        
+        // If profile creation fails due to RLS, provide helpful error
+        if (profileError.code === '42501') {
+          throw new Error(
+            'Database configuration error: Missing INSERT policy. ' +
+            'Please run the migration: database/migrations/004_add_user_profiles_insert_policy.sql ' +
+            'in your Supabase SQL Editor.'
+          )
+        } else {
+          throw profileError
+        }
+      }
+
+      toast({
+        title: 'Account created successfully',
+        description: authData.session
+          ? 'Welcome to NeuroNote!'
+          : 'Please check your email to confirm your account',
+        variant: 'success',
+      })
+
+      // If session exists, navigate immediately, otherwise wait for email confirmation
+      if (authData.session) {
+        navigate('/dashboard')
+      } else {
+        // Show message that email confirmation is needed
+        setTimeout(() => {
+          navigate('/signin')
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Signup error:', error)
+      
+      let errorMessage = 'An error occurred'
+      let errorTitle = 'Sign up failed'
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // Provide more helpful error messages
+        if (error.message.includes('Failed to fetch')) {
+          errorTitle = 'Connection Error'
+          errorMessage = 'Unable to connect to server. Please check your internet connection and try again.'
+        } else if (error.message.includes('User already registered') || error.message.includes('already registered')) {
+          errorTitle = 'Account Exists'
+          errorMessage = 'An account with this email already exists. Please sign in instead.'
+        } else if (error.message.includes('Invalid email')) {
+          errorTitle = 'Invalid Email'
+          errorMessage = 'Please enter a valid email address.'
+        } else if (error.message.includes('Password')) {
+          errorTitle = 'Password Error'
+          errorMessage = 'Password does not meet requirements. Please use at least 8 characters.'
+        } else if (error.message.includes('Too many signup attempts') || error.message.includes('For security purposes')) {
+          errorTitle = 'Rate Limit'
+          errorMessage = error.message
+        } else if (error.message.includes('row-level security')) {
+          errorTitle = 'Database Error'
+          errorMessage = 'Unable to create profile. Please contact support if this persists.'
+        }
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: 'error',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

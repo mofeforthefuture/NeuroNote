@@ -12,14 +12,33 @@ import { PracticeQuestionsPage } from '@/pages/practice-questions'
 import { ProgressPage } from '@/pages/progress'
 import { SettingsPage } from '@/pages/settings'
 import { AppShell } from '@/components/layout/app-shell'
+import { useAuth } from '@/hooks/use-auth'
+
+/**
+ * Protected Route Component
+ * Wraps routes that require authentication
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-foreground-secondary">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />
+}
 
 /**
  * Main App component
  * Sets up routing and layout structure
  */
 function App() {
-  // TODO: Add authentication check
-  const isAuthenticated = false
 
   return (
     <BrowserRouter>
@@ -33,13 +52,11 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <HomePage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
 
@@ -47,37 +64,31 @@ function App() {
         <Route
           path="/documents/upload"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <DocumentUploadPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
         <Route
           path="/documents/processing"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <DocumentProcessingPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
         <Route
           path="/documents/:id"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <DocumentDetailPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
 
@@ -85,37 +96,31 @@ function App() {
         <Route
           path="/topics/:id"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <TopicDetailPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
         <Route
           path="/topics/:topicId/flashcards"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <FlashcardSessionPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
         <Route
           path="/topics/:topicId/questions"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <PracticeQuestionsPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
 
@@ -123,13 +128,11 @@ function App() {
         <Route
           path="/progress"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <ProgressPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
 
@@ -137,13 +140,11 @@ function App() {
         <Route
           path="/settings"
           element={
-            isAuthenticated ? (
+            <ProtectedRoute>
               <AppShell>
                 <SettingsPage />
               </AppShell>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            </ProtectedRoute>
           }
         />
 
