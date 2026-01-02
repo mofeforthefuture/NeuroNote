@@ -171,17 +171,19 @@ export async function generateTopicsForDocument(documentId: string): Promise<{
       throw new Error('Document not found')
     }
 
+    const doc = document as { id: string; file_path: string; title: string | null }
+
     // Download PDF from storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(document.file_path)
+      .download(doc.file_path)
 
     if (downloadError || !fileData) {
       throw new Error('Failed to download PDF file')
     }
 
     // Convert blob to File
-    const file = new File([fileData], document.title || 'document.pdf', {
+    const file = new File([fileData], doc.title || 'document.pdf', {
       type: 'application/pdf',
     })
 
@@ -206,8 +208,8 @@ export async function generateTopicsForDocument(documentId: string): Promise<{
       page_references: topic.pageReferences || [],
     }))
 
-    const { data: savedTopics, error: saveError } = await supabase
-      .from('topics')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: savedTopics, error: saveError } = await (supabase.from('topics') as any)
       .insert(topicsToInsert)
       .select()
 
@@ -253,16 +255,25 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
       return { questionsGenerated: 0, error: 'Topic not found' }
     }
 
+    const topicData = topic as {
+      id: string
+      title: string
+      description: string | null
+      document_id: string
+    }
+
     // Get document to access PDF
     const { data: document, error: docError } = await supabase
       .from('documents')
       .select('id, file_path, title')
-      .eq('id', topic.document_id)
+      .eq('id', topicData.document_id)
       .single()
 
     if (docError || !document) {
       return { questionsGenerated: 0, error: 'Document not found' }
     }
+
+    const doc = document as { id: string; file_path: string; title: string | null }
 
     // Check credit balance (3 credits per topic for questions)
     const { balance, error: balanceError } = await getCreditBalance(user.id)
@@ -280,12 +291,12 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
     // Create processing job and deduct credits
     const { jobId, error: jobError } = await createProcessingJob(
       user.id,
-      document.id,
+      doc.id,
       3, // 3 credits for question generation
       'regenerate_questions',
       {
         topic_id: topicId,
-        topic_title: topic.title,
+        topic_title: topicData.title,
       }
     )
 
@@ -296,7 +307,7 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
     // Download PDF to get context
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(document.file_path)
+      .download(doc.file_path)
 
     if (downloadError || !fileData) {
       // Refund credits if we can't get the file
@@ -305,7 +316,7 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
     }
 
     // Convert blob to File
-    const file = new File([fileData], document.title || 'document.pdf', {
+    const file = new File([fileData], doc.title || 'document.pdf', {
       type: 'application/pdf',
     })
 
@@ -322,7 +333,7 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
       questions,
       tokenUsage,
       error: questionsError,
-    } = await generateQuestions(topic.title, topic.description || '', extractResult.text)
+    } = await generateQuestions(topicData.title, topicData.description || '', extractResult.text)
 
     if (questionsError || !questions || questions.length === 0) {
       await updateProcessingJob(jobId, 0, 'failed', questionsError || 'No questions generated')
@@ -330,7 +341,8 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
     }
 
     // Save questions to database
-    const { error: saveError } = await supabase.from('exam_questions').insert(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: saveError } = await (supabase.from('exam_questions') as any).insert(
       questions.map(q => ({
         topic_id: topicId,
         question_type: q.questionType,
@@ -359,19 +371,19 @@ export async function generateMoreQuestionsForTopic(topicId: string): Promise<{
         const estimatedCost = costResult.data || 0
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from as any)('ai_operation_tokens').insert({
+        await (supabase.from('ai_operation_tokens') as any).insert({
           processing_job_id: jobId,
-          document_id: document.id,
+          document_id: doc.id,
           user_id: user.id,
           operation_type: 'generate_questions',
           prompt_tokens: tokenUsage.promptTokens,
           completion_tokens: tokenUsage.completionTokens,
           total_tokens: tokenUsage.totalTokens,
           ai_model: tokenUsage.model || 'anthropic/claude-3.5-sonnet',
-          estimated_cost_usd: estimatedCost,
+          estimated_cost_usd: estimatedCost.toString(),
           metadata: {
             topic_id: topicId,
-            topic_title: topic.title,
+            topic_title: topicData.title,
             questions_generated: questions.length,
           },
         })

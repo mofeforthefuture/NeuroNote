@@ -98,8 +98,9 @@ export async function deleteDocument(documentId: string): Promise<{
     if (fetchError) throw fetchError
 
     // Delete the file from storage if it exists
-    if (document?.file_path) {
-      const deleteFileResult = await deletePDF(document.file_path)
+    const filePath = document ? (document as { file_path: string }).file_path : null
+    if (filePath) {
+      const deleteFileResult = await deletePDF(filePath)
       if (deleteFileResult.error) {
         // Log error but continue with database deletion
         console.error('Failed to delete file from storage:', deleteFileResult.error)

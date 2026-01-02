@@ -70,10 +70,12 @@ export function ProgressPage() {
         .select('id, document_id, title')
         .in('document_id', documentIds)
 
-      const totalTopics = topics?.length || 0
+      type TopicRow = { id: string; document_id: string; title: string }
+      const topicRows = (topics || []) as TopicRow[]
+      const totalTopics = topicRows.length || 0
 
       // Get all flashcards and questions for these topics
-      const topicIds = topics?.map(t => t.id) || []
+      const topicIds = topicRows.map(t => t.id) || []
 
       const [flashcardsResult, questionsResult] = await Promise.all([
         topicIds.length > 0
@@ -85,8 +87,10 @@ export function ProgressPage() {
       ])
 
       // Create maps for quick lookup
-      const flashcardToTopic = new Map((flashcardsResult.data || []).map(f => [f.id, f.topic_id]))
-      const questionToTopic = new Map((questionsResult.data || []).map(q => [q.id, q.topic_id]))
+      const flashcardData = (flashcardsResult.data || []) as Array<{ id: string; topic_id: string }>
+      const questionData = (questionsResult.data || []) as Array<{ id: string; topic_id: string }>
+      const flashcardToTopic = new Map(flashcardData.map(f => [f.id, f.topic_id]))
+      const questionToTopic = new Map(questionData.map(q => [q.id, q.topic_id]))
 
       // Get user progress
       const { data: progressData } = await supabase
@@ -94,15 +98,34 @@ export function ProgressPage() {
         .select('*')
         .eq('user_id', user.id)
 
+      type ProgressRow = {
+        id: string
+        user_id: string
+        content_type: 'flashcard' | 'exam_question' | 'vocabulary_term'
+        content_id: string
+        mastery_level: number
+        last_reviewed_at: string | null
+        next_review_at: string | null
+        review_count: number
+        correct_count: number
+        incorrect_count: number
+        ease_factor: number
+        interval_days: number
+        created_at: string
+        updated_at: string
+      }
+
+      const progressRows = (progressData || []) as ProgressRow[]
+
       // Calculate stats
       const flashcardsReviewed =
-        progressData?.filter(p => p.content_type === 'flashcard').length || 0
+        progressRows.filter(p => p.content_type === 'flashcard').length || 0
       const questionsAnswered =
-        progressData?.filter(p => p.content_type === 'exam_question').length || 0
+        progressRows.filter(p => p.content_type === 'exam_question').length || 0
 
       // Get topics with mastery >= 80%
       const masteredTopicIds = new Set<string>()
-      progressData?.forEach(p => {
+      progressRows.forEach(p => {
         if (p.mastery_level >= 80) {
           let topicId: string | undefined
           if (p.content_type === 'flashcard') {
@@ -119,12 +142,11 @@ export function ProgressPage() {
       // Get upcoming reviews (items with next_review_at in the next 7 days)
       const now = new Date()
       const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const upcoming =
-        progressData?.filter(p => {
-          if (!p.next_review_at) return false
-          const reviewDate = new Date(p.next_review_at)
-          return reviewDate >= now && reviewDate <= nextWeek
-        }) || []
+      const upcoming = progressRows.filter(p => {
+        if (!p.next_review_at) return false
+        const reviewDate = new Date(p.next_review_at)
+        return reviewDate >= now && reviewDate <= nextWeek
+      })
 
       // Group upcoming reviews by topic
       const upcomingByTopic = new Map<string, { count: number; earliest: Date; topicId: string }>()
@@ -154,7 +176,7 @@ export function ProgressPage() {
       // Format upcoming topics
       const upcomingTopicsList: UpcomingReview[] = Array.from(upcomingByTopic.entries())
         .map(([topicId, data]) => {
-          const topic = topics?.find(t => t.id === topicId)
+          const topic = topicRows.find(t => t.id === topicId)
           if (!topic) return null
 
           const daysUntil = Math.ceil(
@@ -164,15 +186,11 @@ export function ProgressPage() {
             daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`
 
           // Calculate progress for this topic
-          const topicFlashcards = (flashcardsResult.data || [])
-            .filter(f => f.topic_id === topicId)
-            .map(f => f.id)
-          const topicQuestions = (questionsResult.data || [])
-            .filter(q => q.topic_id === topicId)
-            .map(q => q.id)
+          const topicFlashcards = flashcardData.filter(f => f.topic_id === topicId).map(f => f.id)
+          const topicQuestions = questionData.filter(q => q.topic_id === topicId).map(q => q.id)
           const topicContentIds = [...topicFlashcards, ...topicQuestions]
           const topicProgress =
-            progressData?.filter(
+            progressRows.filter(
               p => topicContentIds.includes(p.content_id) && p.mastery_level >= 80
             ).length || 0
           const topicTotal = topicContentIds.length
@@ -190,17 +208,17 @@ export function ProgressPage() {
 
       // Calculate document-level progress
       const docProgress = documents.map(doc => {
-        const docTopics = topics?.filter(t => t.document_id === doc.id) || []
+        const docTopics = topicRows.filter(t => t.document_id === doc.id) || []
         const docTopicIds = docTopics.map(t => t.id)
-        const docFlashcardIds = (flashcardsResult.data || [])
+        const docFlashcardIds = flashcardData
           .filter(f => docTopicIds.includes(f.topic_id))
           .map(f => f.id)
-        const docQuestionIds = (questionsResult.data || [])
+        const docQuestionIds = questionData
           .filter(q => docTopicIds.includes(q.topic_id))
           .map(q => q.id)
         const docContentIds = [...docFlashcardIds, ...docQuestionIds]
         const mastered =
-          progressData?.filter(p => docContentIds.includes(p.content_id) && p.mastery_level >= 80)
+          progressRows.filter(p => docContentIds.includes(p.content_id) && p.mastery_level >= 80)
             .length || 0
         const total = docContentIds.length
         const masteredPercent = total > 0 ? Math.round((mastered / total) * 100) : 0
@@ -214,8 +232,8 @@ export function ProgressPage() {
 
       // Calculate study streak (simplified - count consecutive days with reviews)
       let studyStreak = 0
-      if (progressData && progressData.length > 0) {
-        const reviewDates = progressData
+      if (progressRows && progressRows.length > 0) {
+        const reviewDates = progressRows
           .map(p => (p.last_reviewed_at ? new Date(p.last_reviewed_at).toDateString() : null))
           .filter((d): d is string => d !== null)
         const uniqueDates = [...new Set(reviewDates)].sort().reverse()

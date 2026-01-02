@@ -73,7 +73,12 @@ export async function processDocument(
 
     if (existingUserDoc) {
       // User already uploaded this document
-      documentId = existingUserDoc.id
+      const doc = existingUserDoc as {
+        id: string
+        shared_content_id: string | null
+        processing_status: string
+      }
+      documentId = doc.id
       onProgress?.({
         stage: 'completed',
         progress: 100,
@@ -91,7 +96,8 @@ export async function processDocument(
       .limit(1)
       .maybeSingle()
 
-    const hasSharedContent = !!existingSharedDoc?.shared_content_id
+    const sharedDoc = existingSharedDoc as { id: string; shared_content_id: string } | null
+    const hasSharedContent = !!sharedDoc?.shared_content_id
 
     // New document - process it
     {
@@ -164,7 +170,7 @@ export async function processDocument(
           file_size: file.size,
           page_count: extractResult.pageCount,
           content_hash: hash,
-          shared_content_id: hasSharedContent ? existingSharedDoc.shared_content_id : null,
+          shared_content_id: hasSharedContent && sharedDoc ? sharedDoc.shared_content_id : null,
           processing_status: hasSharedContent ? 'processing' : 'processing', // Will clone if shared content exists
         })
         .select()
@@ -174,10 +180,11 @@ export async function processDocument(
         throw new Error(docError?.message || 'Failed to create document record')
       }
 
-      documentId = newDoc.id
+      const doc = newDoc as { id: string; shared_content_id: string | null }
+      documentId = doc.id
 
       // If shared content exists, clone it instead of processing
-      if (hasSharedContent && existingSharedDoc?.shared_content_id) {
+      if (hasSharedContent && sharedDoc?.shared_content_id) {
         // TODO: Implement content cloning logic here
         // For now, we'll still process it but mark it as using shared content
         // This is a placeholder - you should clone topics, flashcards, etc. from the shared document
