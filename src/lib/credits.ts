@@ -410,26 +410,6 @@ export async function updateProcessingJob(
       const jobData = job as JobRow | null
 
       if (jobData && jobData.estimated_credits !== actualCredits) {
-
-      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
-      const jobData = job as JobRow | null
-
-      if (jobData && jobData.estimated_credits > 0) {
-        // Refund full estimated amount
-        await refundCredits(jobData.user_id, jobData.estimated_credits, 'Processing failed', 'job', jobId)
-      }
-    } else if (status === 'completed') {
-      // If actual credits differ from estimated, adjust
-      const { data: job } = await supabase
-        .from('document_processing_jobs')
-        .select('user_id, estimated_credits, actual_credits')
-        .eq('id', jobId)
-        .single()
-
-      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
-      const jobData = job as JobRow | null
-
-      if (jobData && jobData.estimated_credits !== actualCredits) {
         const difference = jobData.estimated_credits - actualCredits
         if (difference > 0) {
           // Refund excess

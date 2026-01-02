@@ -324,7 +324,7 @@ export function DocumentUploadPage() {
                   <Button 
                     onClick={handleUpload} 
                     className="flex-1"
-                    disabled={creditBalance !== null && creditEstimate && creditBalance < creditEstimate.total}
+                    disabled={creditBalance !== null && creditEstimate !== null && creditBalance < creditEstimate.total}
                   >
                     Upload and Process
                   </Button>

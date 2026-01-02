@@ -76,13 +76,14 @@ export function SignUpPage() {
       }
 
       // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: authData.user.id,
-          is_medical_field: formData.isMedicalField,
-          country_code: null, // Will be auto-detected or set later
-        })
+      const profileData = {
+        id: authData.user.id,
+        is_medical_field: formData.isMedicalField,
+        country_code: null as string | null, // Will be auto-detected or set later
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: profileError } = await (supabase.from('user_profiles') as any)
+        .insert(profileData)
 
       if (profileError) {
         console.error('Profile error:', profileError)

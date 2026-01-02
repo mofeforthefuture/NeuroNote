@@ -112,23 +112,24 @@ export function DocumentDetailPage() {
 
     if (docTopics && docTopics.length > 0) {
       // Get counts and progress for each topic
-      const topicStatsPromises = docTopics.map(async topic => {
+      const topicStatsPromises = docTopics.map(async (topic: Topic) => {
+        const topicId = topic.id
         // Get flashcard and question counts for this topic
         const [flashcardsResult, questionsResult, progressResult] = await Promise.all([
           supabase
             .from('flashcards')
             .select('id', { count: 'exact', head: true })
-            .eq('topic_id', topic.id),
+            .eq('topic_id', topicId),
           supabase
             .from('exam_questions')
             .select('id', { count: 'exact', head: true })
-            .eq('topic_id', topic.id),
-          getTopicProgress(topic.id),
+            .eq('topic_id', topicId),
+          getTopicProgress(topicId),
         ])
 
         // Type assertions for count queries
-        const flashcardCount = flashcardsResult.count || 0
-        const questionCount = questionsResult.count || 0
+        const flashcardCount = flashcardsResult.count ?? 0
+        const questionCount = questionsResult.count ?? 0
         const progress = progressResult.progress?.percentage || 0
         const totalTopicItems = flashcardCount + questionCount
         const masteredItems = progressResult.progress?.mastered || 0
@@ -147,7 +148,7 @@ export function DocumentDetailPage() {
         totalItems += totalTopicItems
 
         return {
-          topicId: topic.id,
+          topicId: topicId,
           stats: {
             flashcardCount,
             questionCount,

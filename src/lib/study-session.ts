@@ -83,11 +83,11 @@ export async function updateFlashcardProgress(
       correct_count: number
       incorrect_count: number
     }
-    const progressData = existingProgress as ProgressRow | null
+    const existingProgressRow = existingProgress as ProgressRow | null
     
     const quality = gotIt ? 4 : 1 // 4 = correct, 1 = incorrect
-    const currentEaseFactor = progressData?.ease_factor || 2.5
-    const currentInterval = progressData?.interval_days || 0
+    const currentEaseFactor = existingProgressRow?.ease_factor || 2.5
+    const currentInterval = existingProgressRow?.interval_days || 0
 
     const { newEaseFactor, newInterval, nextReviewAt } = calculateSM2(
       currentEaseFactor,
@@ -100,27 +100,27 @@ export async function updateFlashcardProgress(
       content_type: 'flashcard' as const,
       content_id: flashcardId,
       mastery_level: gotIt
-        ? Math.min(100, (progressData?.mastery_level || 0) + 10)
-        : Math.max(0, (progressData?.mastery_level || 0) - 5),
+        ? Math.min(100, (existingProgressRow?.mastery_level || 0) + 10)
+        : Math.max(0, (existingProgressRow?.mastery_level || 0) - 5),
       last_reviewed_at: new Date().toISOString(),
       next_review_at: nextReviewAt.toISOString(),
-      review_count: (progressData?.review_count || 0) + 1,
+      review_count: (existingProgressRow?.review_count || 0) + 1,
       correct_count: gotIt
-        ? (progressData?.correct_count || 0) + 1
-        : progressData?.correct_count || 0,
+        ? (existingProgressRow?.correct_count || 0) + 1
+        : existingProgressRow?.correct_count || 0,
       incorrect_count: gotIt
-        ? progressData?.incorrect_count || 0
-        : (progressData?.incorrect_count || 0) + 1,
+        ? existingProgressRow?.incorrect_count || 0
+        : (existingProgressRow?.incorrect_count || 0) + 1,
       ease_factor: newEaseFactor,
       interval_days: newInterval,
     }
 
-    if (progressData) {
+    if (existingProgressRow) {
       // Update existing progress
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from('user_progress') as any)
         .update(progressData)
-        .eq('id', progressData.id)
+        .eq('id', existingProgressRow.id)
 
       if (error) throw error
     } else {
@@ -235,8 +235,10 @@ export async function getTopicProgress(topicId: string) {
       supabase.from('exam_questions').select('id').eq('topic_id', topicId),
     ])
 
-    const flashcardIds = (flashcardsResult.data || []).map((f) => f.id)
-    const questionIds = (questionsResult.data || []).map((q) => q.id)
+    type FlashcardRow = { id: string }
+    type QuestionRow = { id: string }
+    const flashcardIds = ((flashcardsResult.data || []) as FlashcardRow[]).map((f) => f.id)
+    const questionIds = ((questionsResult.data || []) as QuestionRow[]).map((q) => q.id)
 
     // Get progress for all content
     const { data: progressData } = await supabase
@@ -249,8 +251,11 @@ export async function getTopicProgress(topicId: string) {
 
     // Calculate overall progress
     const totalItems = flashcardIds.length + questionIds.length
+    type ProgressRow = {
+      mastery_level: number
+    }
     const masteredItems =
-      progressData?.filter((p) => p.mastery_level >= 80).length || 0
+      ((progressData || []) as ProgressRow[]).filter((p) => p.mastery_level >= 80).length || 0
 
     return {
       progress: {
