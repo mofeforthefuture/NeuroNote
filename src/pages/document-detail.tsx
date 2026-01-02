@@ -126,6 +126,7 @@ export function DocumentDetailPage() {
           getTopicProgress(topic.id),
         ])
 
+        // Type assertions for count queries
         const flashcardCount = flashcardsResult.count || 0
         const questionCount = questionsResult.count || 0
         const progress = progressResult.progress?.percentage || 0

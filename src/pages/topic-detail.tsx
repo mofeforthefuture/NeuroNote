@@ -90,7 +90,8 @@ export function TopicDetailPage() {
       .single()
 
     if (data) {
-      setNotes(data.note_text)
+      const noteData = data as { note_text: string }
+      setNotes(noteData.note_text)
     }
   }
 
@@ -100,8 +101,8 @@ export function TopicDetailPage() {
     const user = await supabase.auth.getUser()
     if (!user.data.user) return
 
-    const { error } = await supabase
-      .from('user_notes')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('user_notes') as any)
       .upsert({
         user_id: user.data.user.id,
         topic_id: id,

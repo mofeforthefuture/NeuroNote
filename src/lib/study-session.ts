@@ -74,9 +74,20 @@ export async function updateFlashcardProgress(
       .eq('content_id', flashcardId)
       .single()
 
+    type ProgressRow = {
+      id: string
+      ease_factor: number
+      interval_days: number
+      mastery_level: number
+      review_count: number
+      correct_count: number
+      incorrect_count: number
+    }
+    const progressData = existingProgress as ProgressRow | null
+    
     const quality = gotIt ? 4 : 1 // 4 = correct, 1 = incorrect
-    const currentEaseFactor = existingProgress?.ease_factor || 2.5
-    const currentInterval = existingProgress?.interval_days || 0
+    const currentEaseFactor = progressData?.ease_factor || 2.5
+    const currentInterval = progressData?.interval_days || 0
 
     const { newEaseFactor, newInterval, nextReviewAt } = calculateSM2(
       currentEaseFactor,
@@ -89,32 +100,33 @@ export async function updateFlashcardProgress(
       content_type: 'flashcard' as const,
       content_id: flashcardId,
       mastery_level: gotIt
-        ? Math.min(100, (existingProgress?.mastery_level || 0) + 10)
-        : Math.max(0, (existingProgress?.mastery_level || 0) - 5),
+        ? Math.min(100, (progressData?.mastery_level || 0) + 10)
+        : Math.max(0, (progressData?.mastery_level || 0) - 5),
       last_reviewed_at: new Date().toISOString(),
       next_review_at: nextReviewAt.toISOString(),
-      review_count: (existingProgress?.review_count || 0) + 1,
+      review_count: (progressData?.review_count || 0) + 1,
       correct_count: gotIt
-        ? (existingProgress?.correct_count || 0) + 1
-        : existingProgress?.correct_count || 0,
+        ? (progressData?.correct_count || 0) + 1
+        : progressData?.correct_count || 0,
       incorrect_count: gotIt
-        ? existingProgress?.incorrect_count || 0
-        : (existingProgress?.incorrect_count || 0) + 1,
+        ? progressData?.incorrect_count || 0
+        : (progressData?.incorrect_count || 0) + 1,
       ease_factor: newEaseFactor,
       interval_days: newInterval,
     }
 
-    if (existingProgress) {
+    if (progressData) {
       // Update existing progress
-      const { error } = await supabase
-        .from('user_progress')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('user_progress') as any)
         .update(progressData)
-        .eq('id', existingProgress.id)
+        .eq('id', progressData.id)
 
       if (error) throw error
     } else {
       // Create new progress record
-      const { error } = await supabase.from('user_progress').insert(progressData)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('user_progress') as any).insert(progressData)
 
       if (error) throw error
     }
@@ -152,34 +164,46 @@ export async function updateQuestionProgress(
       .eq('content_id', questionId)
       .single()
 
+    type ProgressRow = {
+      id: string
+      mastery_level: number
+      review_count: number
+      correct_count: number
+      incorrect_count: number
+      ease_factor: number
+      interval_days: number
+    }
+    const progressRow = existingProgress as ProgressRow | null
+    
     const progressData = {
       user_id: user.id,
       content_type: 'exam_question' as const,
       content_id: questionId,
       mastery_level: isCorrect
-        ? Math.min(100, (existingProgress?.mastery_level || 0) + 15)
-        : Math.max(0, (existingProgress?.mastery_level || 0) - 10),
+        ? Math.min(100, (progressRow?.mastery_level || 0) + 15)
+        : Math.max(0, (progressRow?.mastery_level || 0) - 10),
       last_reviewed_at: new Date().toISOString(),
-      review_count: (existingProgress?.review_count || 0) + 1,
+      review_count: (progressRow?.review_count || 0) + 1,
       correct_count: isCorrect
-        ? (existingProgress?.correct_count || 0) + 1
-        : existingProgress?.correct_count || 0,
+        ? (progressRow?.correct_count || 0) + 1
+        : progressRow?.correct_count || 0,
       incorrect_count: isCorrect
-        ? existingProgress?.incorrect_count || 0
-        : (existingProgress?.incorrect_count || 0) + 1,
-      ease_factor: existingProgress?.ease_factor || 2.5,
-      interval_days: existingProgress?.interval_days || 1,
+        ? progressRow?.incorrect_count || 0
+        : (progressRow?.incorrect_count || 0) + 1,
+      ease_factor: progressRow?.ease_factor || 2.5,
+      interval_days: progressRow?.interval_days || 1,
     }
 
-    if (existingProgress) {
-      const { error } = await supabase
-        .from('user_progress')
+    if (progressRow) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('user_progress') as any)
         .update(progressData)
-        .eq('id', existingProgress.id)
+        .eq('id', progressRow.id)
 
       if (error) throw error
     } else {
-      const { error } = await supabase.from('user_progress').insert(progressData)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('user_progress') as any).insert(progressData)
 
       if (error) throw error
     }

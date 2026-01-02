@@ -609,7 +609,8 @@ export async function getDocumentStatus(documentId: string): Promise<{
     return { status: 'failed' }
   }
 
+  const docData = data as { processing_status: string }
   return {
-    status: data.processing_status as 'pending' | 'processing' | 'completed' | 'failed',
+    status: docData.processing_status as 'pending' | 'processing' | 'completed' | 'failed',
   }
 }
