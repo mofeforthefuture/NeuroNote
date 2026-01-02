@@ -1,20 +1,55 @@
+import { useEffect, useState } from 'react'
 import { FileText, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { getDocuments } from '@/lib/documents'
+import { getDocumentTopics } from '@/lib/documents'
 
 /**
  * Home/Dashboard page
  * Shows user's documents and quick actions
  */
 export function HomePage() {
-  // TODO: Fetch documents from API
-  const documents: Array<{
+  const [documents, setDocuments] = useState<Array<{
     id: string
     title: string
     topicCount: number
     lastStudied?: string
-  }> = []
+    processingStatus: string
+  }>>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    loadDocuments()
+  }, [])
+
+  const loadDocuments = async () => {
+    setIsLoading(true)
+    const { documents: docs, error } = await getDocuments()
+
+    if (error) {
+      console.error('Failed to load documents:', error)
+      setIsLoading(false)
+      return
+    }
+
+    // Load topic counts for each document
+    const docsWithCounts = await Promise.all(
+      docs.map(async (doc) => {
+        const { topics } = await getDocumentTopics(doc.id)
+        return {
+          id: doc.id,
+          title: doc.title,
+          topicCount: topics.length,
+          processingStatus: doc.processingStatus,
+        }
+      })
+    )
+
+    setDocuments(docsWithCounts)
+    setIsLoading(false)
+  }
 
   return (
     <div className="space-y-8">
@@ -35,7 +70,13 @@ export function HomePage() {
       </div>
 
       {/* Documents Grid */}
-      {documents.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-foreground-secondary">Loading documents...</p>
+          </CardContent>
+        </Card>
+      ) : documents.length === 0 ? (
         <Card className="border-dashed">
           <CardHeader className="text-center">
             <FileText className="mx-auto mb-4 h-12 w-12 text-foreground-tertiary" />
@@ -60,12 +101,25 @@ export function HomePage() {
               <CardHeader>
                 <CardTitle className="line-clamp-2">{doc.title}</CardTitle>
                 <CardDescription>
-                  {doc.topicCount} topics • {doc.lastStudied ? `Last studied ${doc.lastStudied}` : 'Not started'}
+                  {doc.processingStatus === 'completed'
+                    ? `${doc.topicCount} topics • Ready to study`
+                    : doc.processingStatus === 'processing'
+                    ? 'Processing...'
+                    : doc.processingStatus === 'failed'
+                    ? 'Processing failed'
+                    : 'Pending processing'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button asChild variant="secondary" className="w-full">
-                  <Link to={`/documents/${doc.id}`}>Open</Link>
+                <Button
+                  asChild
+                  variant="secondary"
+                  className="w-full"
+                  disabled={doc.processingStatus !== 'completed'}
+                >
+                  <Link to={`/documents/${doc.id}`}>
+                    {doc.processingStatus === 'completed' ? 'Open' : 'Processing...'}
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

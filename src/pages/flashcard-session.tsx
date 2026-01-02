@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check, X, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { getTopicFlashcards } from '@/lib/topics'
+import { updateFlashcardProgress } from '@/lib/study-session'
+import { useToast } from '@/components/ui/use-toast'
 import type { Flashcard } from '@/types'
 
 /**
@@ -14,67 +17,73 @@ import type { Flashcard } from '@/types'
 export function FlashcardSessionPage() {
   const { topicId } = useParams<{ topicId: string }>()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
-  const [, setReviewedCards] = useState<Set<string>>(new Set())
+  const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set())
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  // TODO: Fetch flashcards from API
-  const flashcards: Flashcard[] = [
-    {
-      id: '1',
-      topicId: topicId || '1',
-      frontText: 'What is a neuron?',
-      backText: 'A specialized cell that transmits nerve impulses',
-      difficultyLevel: 'easy',
-      aiGenerated: true,
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      topicId: topicId || '1',
-      frontText: 'What is a synapse?',
-      backText: 'The junction between two neurons where signals are transmitted',
-      difficultyLevel: 'medium',
-      aiGenerated: true,
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      topicId: topicId || '1',
-      frontText: 'What are neurotransmitters?',
-      backText: 'Chemical messengers that transmit signals across synapses',
-      difficultyLevel: 'hard',
-      aiGenerated: true,
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ]
+  useEffect(() => {
+    if (topicId) {
+      loadFlashcards()
+    }
+  }, [topicId])
 
-  const currentCard = flashcards[currentIndex]
-  const progress = ((currentIndex + 1) / flashcards.length) * 100
+  const loadFlashcards = async () => {
+    if (!topicId) return
+
+    setIsLoading(true)
+    const { flashcards: cards, error } = await getTopicFlashcards(topicId)
+
+    if (error) {
+      console.error('Failed to load flashcards:', error)
+    } else {
+      setFlashcards((cards || []) as Flashcard[])
+    }
+
+    setIsLoading(false)
+  }
+
+  const progress = flashcards.length > 0 ? ((currentIndex + 1) / flashcards.length) * 100 : 0
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped)
   }
 
-  const handleResponse = (_gotIt: boolean) => {
-    if (currentCard) {
-      setReviewedCards((prev) => new Set(prev).add(currentCard.id))
-      
-      // TODO: Update progress in backend
-      
-      if (currentIndex < flashcards.length - 1) {
-        setCurrentIndex(currentIndex + 1)
-        setIsFlipped(false)
-      } else {
-        // Session complete
+  const handleResponse = async (gotIt: boolean) => {
+    if (!currentCard || isUpdating) return
+
+    setIsUpdating(true)
+    setReviewedCards((prev) => new Set(prev).add(currentCard.id))
+
+    // Update progress in backend
+    const { error } = await updateFlashcardProgress(currentCard.id, gotIt)
+    if (error) {
+      console.error('Failed to update progress:', error)
+      toast({
+        title: 'Progress update failed',
+        description: error,
+        variant: 'error',
+      })
+    }
+
+    setIsUpdating(false)
+
+    if (currentIndex < flashcards.length - 1) {
+      setCurrentIndex(currentIndex + 1)
+      setIsFlipped(false)
+    } else {
+      // Session complete
+      toast({
+        title: 'Session complete!',
+        description: `You reviewed ${reviewedCards.size + 1} flashcards`,
+        variant: 'success',
+      })
+      setTimeout(() => {
         navigate(`/topics/${topicId}?session=complete`)
-      }
+      }, 1500)
     }
   }
 
@@ -85,7 +94,15 @@ export function FlashcardSessionPage() {
     }
   }
 
-  if (!currentCard) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-foreground-secondary">Loading flashcards...</p>
+      </div>
+    )
+  }
+
+  if (flashcards.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-md">
@@ -98,6 +115,11 @@ export function FlashcardSessionPage() {
         </Card>
       </div>
     )
+  }
+
+  const currentCard = flashcards[currentIndex]
+  if (!currentCard) {
+    return null
   }
 
   return (

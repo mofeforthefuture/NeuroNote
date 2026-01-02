@@ -9,6 +9,7 @@ import { DocumentDetailPage } from '@/pages/document-detail'
 import { TopicDetailPage } from '@/pages/topic-detail'
 import { FlashcardSessionPage } from '@/pages/flashcard-session'
 import { PracticeQuestionsPage } from '@/pages/practice-questions'
+import { StudyModeSelectorPage } from '@/pages/study-mode-selector'
 import { ProgressPage } from '@/pages/progress'
 import { SettingsPage } from '@/pages/settings'
 import { AppShell } from '@/components/layout/app-shell'
@@ -91,6 +92,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/documents/:documentId/study"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <StudyModeSelectorPage />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Topic Routes */}
         <Route
@@ -104,7 +115,7 @@ function App() {
           }
         />
         <Route
-          path="/topics/:topicId/flashcards"
+          path="/study/flashcards/:topicId"
           element={
             <ProtectedRoute>
               <AppShell>
@@ -114,7 +125,7 @@ function App() {
           }
         />
         <Route
-          path="/topics/:topicId/questions"
+          path="/study/questions/:topicId"
           element={
             <ProtectedRoute>
               <AppShell>

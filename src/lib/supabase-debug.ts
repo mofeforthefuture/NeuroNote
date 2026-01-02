@@ -32,7 +32,7 @@ export async function testSupabaseConnection() {
     
     // Test 2: Try to fetch from Supabase
     console.log('\nTesting API connection...')
-    const { data, error } = await supabase.from('user_profiles').select('count').limit(1)
+    const { error } = await supabase.from('user_profiles').select('count').limit(1)
     
     if (error) {
       console.error('❌ Connection failed:', error.message)
@@ -49,7 +49,7 @@ export async function testSupabaseConnection() {
     
     // Test 3: Check auth endpoint
     console.log('\nTesting auth endpoint...')
-    const { data: authData, error: authError } = await supabase.auth.getSession()
+    const { error: authError } = await supabase.auth.getSession()
     
     if (authError) {
       console.warn('⚠️  Auth check:', authError.message)
