@@ -60,16 +60,29 @@ export async function getTokenUsageSummary(): Promise<{
       return { stats: [], error: error.message }
     }
 
+    type SummaryRow = {
+      operation_type: string
+      operation_count: number
+      total_prompt_tokens: number
+      total_completion_tokens: number
+      total_tokens: number
+      total_cost_usd: string
+      avg_tokens_per_operation: string
+      avg_cost_per_operation: string
+      first_operation: string
+      last_operation: string
+    }
+    const rows = (data || []) as SummaryRow[]
     return {
-      stats: (data || []).map(row => ({
+      stats: rows.map(row => ({
         operationType: row.operation_type,
         operationCount: row.operation_count,
         totalPromptTokens: row.total_prompt_tokens,
         totalCompletionTokens: row.total_completion_tokens,
         totalTokens: row.total_tokens,
-        totalCostUsd: parseFloat(row.total_cost_usd || 0),
-        avgTokensPerOperation: parseFloat(row.avg_tokens_per_operation || 0),
-        avgCostPerOperation: parseFloat(row.avg_cost_per_operation || 0),
+        totalCostUsd: parseFloat(row.total_cost_usd || '0'),
+        avgTokensPerOperation: parseFloat(row.avg_tokens_per_operation || '0'),
+        avgCostPerOperation: parseFloat(row.avg_cost_per_operation || '0'),
         firstOperation: row.first_operation,
         lastOperation: row.last_operation,
       })),
@@ -100,16 +113,27 @@ export async function getDocumentTokenUsage(documentId: string): Promise<{
       return { usage: null, error: error.message }
     }
 
+    type DocumentUsageRow = {
+      document_id: string
+      document_title: string
+      operation_count: number
+      total_prompt_tokens: number
+      total_completion_tokens: number
+      total_tokens: number
+      total_cost_usd: string
+      credits_charged: number | null
+    }
+    const usageData = data as DocumentUsageRow
     return {
       usage: {
-        documentId: data.document_id,
-        documentTitle: data.document_title,
-        operationCount: data.operation_count || 0,
-        totalPromptTokens: data.total_prompt_tokens || 0,
-        totalCompletionTokens: data.total_completion_tokens || 0,
-        totalTokens: data.total_tokens || 0,
-        totalCostUsd: parseFloat(data.total_cost_usd || 0),
-        creditsCharged: data.credits_charged || 0,
+        documentId: usageData.document_id,
+        documentTitle: usageData.document_title,
+        operationCount: usageData.operation_count || 0,
+        totalPromptTokens: usageData.total_prompt_tokens || 0,
+        totalCompletionTokens: usageData.total_completion_tokens || 0,
+        totalTokens: usageData.total_tokens || 0,
+        totalCostUsd: parseFloat(usageData.total_cost_usd || '0'),
+        creditsCharged: usageData.credits_charged || 0,
       },
     }
   } catch (error) {
@@ -139,25 +163,43 @@ export async function getProcessingJobTokenUsage(jobId: string): Promise<{
       return { usage: null, error: jobError?.message || 'Job not found' }
     }
 
+    type JobRow = {
+      id: string
+      document_id: string
+      total_tokens: number | null
+      prompt_tokens: number | null
+      completion_tokens: number | null
+      estimated_cost_usd: string | null
+      ai_model: string | null
+    }
+    const jobData = job as JobRow
+
     // Get individual operations
-    const { data: operations, error: opsError } = await supabase
+    const { data: operations } = await supabase
       .from('ai_operation_tokens')
       .select('operation_type, total_tokens, estimated_cost_usd')
       .eq('processing_job_id', jobId)
 
+    type OperationRow = {
+      operation_type: string
+      total_tokens: number
+      estimated_cost_usd: string
+    }
+    const operationRows = (operations || []) as OperationRow[]
+
     return {
       usage: {
-        jobId: job.id,
-        documentId: job.document_id,
-        totalTokens: job.total_tokens || 0,
-        promptTokens: job.prompt_tokens || 0,
-        completionTokens: job.completion_tokens || 0,
-        estimatedCostUsd: parseFloat(job.estimated_cost_usd || 0),
-        aiModel: job.ai_model || undefined,
-        operations: (operations || []).map(op => ({
+        jobId: jobData.id,
+        documentId: jobData.document_id,
+        totalTokens: jobData.total_tokens || 0,
+        promptTokens: jobData.prompt_tokens || 0,
+        completionTokens: jobData.completion_tokens || 0,
+        estimatedCostUsd: parseFloat(jobData.estimated_cost_usd || '0'),
+        aiModel: jobData.ai_model || undefined,
+        operations: operationRows.map(op => ({
           operationType: op.operation_type,
           tokens: op.total_tokens,
-          cost: parseFloat(op.estimated_cost_usd || 0),
+          cost: parseFloat(op.estimated_cost_usd || '0'),
         })),
       },
     }
@@ -209,8 +251,10 @@ export async function getCostEfficiencyMetrics(): Promise<{
       }
     }
 
-    const totalCostUsd = (costData || []).reduce((sum, row) => {
-      return sum + parseFloat(row.estimated_cost_usd || 0)
+    type CostRow = { estimated_cost_usd: string }
+    const costRows = (costData || []) as CostRow[]
+    const totalCostUsd = costRows.reduce((sum, row) => {
+      return sum + parseFloat(row.estimated_cost_usd || '0')
     }, 0)
 
     // Get total credits charged
@@ -229,7 +273,9 @@ export async function getCostEfficiencyMetrics(): Promise<{
       }
     }
 
-    const totalCreditsCharged = (creditsData || []).reduce((sum, row) => {
+    type CreditsRow = { actual_credits: number }
+    const creditsRows = (creditsData || []) as CreditsRow[]
+    const totalCreditsCharged = creditsRows.reduce((sum, row) => {
       return sum + (row.actual_credits || 0)
     }, 0)
 

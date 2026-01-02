@@ -84,11 +84,16 @@ export async function getCreditBalance(userId: string): Promise<{
       return { balance: null, error: error.message }
     }
 
+    const creditData = data as { balance: number; lifetime_earned: number; lifetime_spent: number } | null
     return {
-      balance: {
-        balance: data.balance || 0,
-        lifetimeEarned: data.lifetime_earned || 0,
-        lifetimeSpent: data.lifetime_spent || 0,
+      balance: creditData ? {
+        balance: creditData.balance || 0,
+        lifetimeEarned: creditData.lifetime_earned || 0,
+        lifetimeSpent: creditData.lifetime_spent || 0,
+      } : {
+        balance: 0,
+        lifetimeEarned: 0,
+        lifetimeSpent: 0,
       },
     }
   } catch (error) {
@@ -121,8 +126,20 @@ export async function getCreditTransactions(
       return { transactions: [], error: error.message }
     }
 
+    type TransactionRow = {
+      id: string
+      amount: number
+      transaction_type: string
+      reference_type: string | null
+      reference_id: string | null
+      description: string
+      metadata: Record<string, any>
+      balance_after: number
+      created_at: string
+    }
+    const transactions = (data || []) as TransactionRow[]
     return {
-      transactions: (data || []).map(tx => ({
+      transactions: transactions.map(tx => ({
         id: tx.id,
         amount: tx.amount,
         transactionType: tx.transaction_type as CreditTransaction['transactionType'],
@@ -169,8 +186,19 @@ export async function getCreditPackages(
       return { packages: [], error: error.message }
     }
 
+    type PackageRow = {
+      id: string
+      name: string
+      credits: number
+      price_amount: string
+      price_currency: 'USD' | 'NGN'
+      country_code: string | null
+      bonus_credits: number
+      description: string | null
+    }
+    const packages = (data || []) as PackageRow[]
     return {
-      packages: (data || []).map(pkg => ({
+      packages: packages.map(pkg => ({
         id: pkg.id,
         name: pkg.name,
         credits: pkg.credits,
@@ -255,8 +283,8 @@ export async function createProcessingJob(
     }
 
     // Create processing job
-    const { data: job, error: jobError } = await supabase
-      .from('document_processing_jobs')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: job, error: jobError } = await (supabase.from('document_processing_jobs') as any)
       .insert({
         document_id: documentId,
         user_id: userId,
@@ -272,14 +300,17 @@ export async function createProcessingJob(
       return { jobId: null, newBalance: null, error: jobError?.message || 'Failed to create job' }
     }
 
+    const jobData = job as { id: string }
+
     // Deduct credits using database function (transaction-safe)
-    const { data: result, error: deductError } = await supabase.rpc('deduct_credits_from_user', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: result, error: deductError } = await (supabase.rpc as any)('deduct_credits_from_user', {
       p_user_id: userId,
       p_amount: estimatedCredits,
       p_transaction_type: 'processing',
       p_description: `Processing document: ${processingType}`,
       p_reference_type: 'job',
-      p_reference_id: job.id,
+      p_reference_id: jobData.id,
       p_metadata: {
         estimated_credits: estimatedCredits,
         processing_type: processingType,
@@ -289,7 +320,8 @@ export async function createProcessingJob(
 
     if (deductError) {
       // Rollback: delete the job if credit deduction failed
-      await supabase.from('document_processing_jobs').delete().eq('id', job.id)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('document_processing_jobs') as any).delete().eq('id', jobData.id)
       return {
         jobId: null,
         newBalance: null,
@@ -298,16 +330,16 @@ export async function createProcessingJob(
     }
 
     // Update job with deduction timestamp
-    await supabase
-      .from('document_processing_jobs')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('document_processing_jobs') as any)
       .update({
         status: 'processing',
         credits_deducted_at: new Date().toISOString(),
       })
-      .eq('id', job.id)
+      .eq('id', jobData.id)
 
     return {
-      jobId: job.id,
+      jobId: jobData.id,
       newBalance: result as number,
     }
   } catch (error) {
@@ -342,8 +374,8 @@ export async function updateProcessingJob(
       updateData.error_message = errorMessage
     }
 
-    const { error } = await supabase
-      .from('document_processing_jobs')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('document_processing_jobs') as any)
       .update(updateData)
       .eq('id', jobId)
 
@@ -358,10 +390,33 @@ export async function updateProcessingJob(
         .select('user_id, estimated_credits, actual_credits')
         .eq('id', jobId)
         .single()
+      
+      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
+      const jobData = job as JobRow | null
 
-      if (job && job.estimated_credits > 0) {
+      if (jobData && jobData.estimated_credits > 0) {
         // Refund full estimated amount
-        await refundCredits(job.user_id, job.estimated_credits, 'Processing failed', 'job', jobId)
+        await refundCredits(jobData.user_id, jobData.estimated_credits, 'Processing failed', 'job', jobId)
+      }
+    } else if (status === 'completed') {
+      // If actual credits differ from estimated, adjust
+      const { data: job } = await supabase
+        .from('document_processing_jobs')
+        .select('user_id, estimated_credits, actual_credits')
+        .eq('id', jobId)
+        .single()
+      
+      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
+      const jobData = job as JobRow | null
+
+      if (jobData && jobData.estimated_credits !== actualCredits) {
+
+      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
+      const jobData = job as JobRow | null
+
+      if (jobData && jobData.estimated_credits > 0) {
+        // Refund full estimated amount
+        await refundCredits(jobData.user_id, jobData.estimated_credits, 'Processing failed', 'job', jobId)
       }
     } else if (status === 'completed') {
       // If actual credits differ from estimated, adjust
@@ -371,15 +426,19 @@ export async function updateProcessingJob(
         .eq('id', jobId)
         .single()
 
-      if (job && job.estimated_credits !== actualCredits) {
-        const difference = job.estimated_credits - actualCredits
+      type JobRow = { user_id: string; estimated_credits: number; actual_credits: number | null }
+      const jobData = job as JobRow | null
+
+      if (jobData && jobData.estimated_credits !== actualCredits) {
+        const difference = jobData.estimated_credits - actualCredits
         if (difference > 0) {
           // Refund excess
-          await refundCredits(job.user_id, difference, 'Processing used fewer credits than estimated', 'job', jobId)
+          await refundCredits(jobData.user_id, difference, 'Processing used fewer credits than estimated', 'job', jobId)
         } else {
           // Charge additional (shouldn't happen often, but handle it)
-          const { error: addError } = await supabase.rpc('deduct_credits_from_user', {
-            p_user_id: job.user_id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: addError } = await (supabase.rpc as any)('deduct_credits_from_user', {
+            p_user_id: jobData.user_id,
             p_amount: Math.abs(difference),
             p_transaction_type: 'processing',
             p_description: 'Additional credits for processing',
@@ -418,7 +477,8 @@ export async function refundCredits(
   error?: string
 }> {
   try {
-    const { data, error } = await supabase.rpc('add_credits_to_user', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)('add_credits_to_user', {
       p_user_id: userId,
       p_amount: amount,
       p_transaction_type: 'refund',
@@ -434,8 +494,8 @@ export async function refundCredits(
 
     // Update processing job if reference is a job
     if (referenceType === 'job' && referenceId) {
-      await supabase
-        .from('document_processing_jobs')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('document_processing_jobs') as any)
         .update({
           status: 'refunded',
           refunded_at: new Date().toISOString(),
@@ -473,18 +533,31 @@ export async function getProcessingJob(jobId: string): Promise<{
       return { job: null, error: error.message }
     }
 
+    type JobRow = {
+      id: string
+      document_id: string
+      estimated_credits: number
+      actual_credits: number | null
+      processing_type: string
+      status: string
+      credits_deducted_at: string | null
+      refunded_at: string | null
+      error_message: string | null
+      metadata: Record<string, any>
+    }
+    const jobData = data as JobRow
     return {
       job: {
-        id: data.id,
-        documentId: data.document_id,
-        estimatedCredits: data.estimated_credits,
-        actualCredits: data.actual_credits || undefined,
-        processingType: data.processing_type,
-        status: data.status,
-        creditsDeductedAt: data.credits_deducted_at || undefined,
-        refundedAt: data.refunded_at || undefined,
-        errorMessage: data.error_message || undefined,
-        metadata: data.metadata || {},
+        id: jobData.id,
+        documentId: jobData.document_id,
+        estimatedCredits: jobData.estimated_credits,
+        actualCredits: jobData.actual_credits || undefined,
+        processingType: jobData.processing_type,
+        status: jobData.status as ProcessingJob['status'],
+        creditsDeductedAt: jobData.credits_deducted_at || undefined,
+        refundedAt: jobData.refunded_at || undefined,
+        errorMessage: jobData.error_message || undefined,
+        metadata: jobData.metadata || {},
       },
     }
   } catch (error) {

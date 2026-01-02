@@ -161,8 +161,8 @@ export async function processDocument(
 
       // Create document record first
       // If shared content exists, link to it (will clone content later)
-      const { data: newDoc, error: docError } = await supabase
-        .from('documents')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: newDoc, error: docError } = await (supabase.from('documents') as any)
         .insert({
           user_id: userId,
           title: file.name.replace('.pdf', ''),
@@ -190,8 +190,8 @@ export async function processDocument(
         // This is a placeholder - you should clone topics, flashcards, etc. from the shared document
 
         // Update document status to completed (cloned)
-        await supabase
-          .from('documents')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('documents') as any)
           .update({
             processing_status: 'completed',
             processed_at: new Date().toISOString(),
@@ -228,8 +228,8 @@ export async function processDocument(
 
       if (jobError || !createdJobId) {
         // Update document status to failed
-        await supabase
-          .from('documents')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('documents') as any)
           .update({ processing_status: 'failed' })
           .eq('id', documentId)
         throw new Error(jobError || 'Failed to create processing job')
@@ -258,8 +258,8 @@ export async function processDocument(
 
       for (const topic of topics) {
         // Save topic FIRST - if this fails, stop processing to avoid wasting tokens on AI generation
-        const { data: savedTopic, error: topicError } = await supabase
-          .from('topics')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: savedTopic, error: topicError } = await (supabase.from('topics') as any)
           .insert({
             document_id: documentId,
             title: topic.title,
@@ -345,9 +345,10 @@ export async function processDocument(
 
         // Save flashcards - check for errors
         if (flashcards.length > 0) {
-          const { error: flashcardsError } = await supabase.from('flashcards').insert(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: flashcardsError } = await (supabase.from('flashcards') as any).insert(
             flashcards.map(card => ({
-              topic_id: savedTopic.id,
+              topic_id: (savedTopic as { id: string }).id,
               front_text: card.frontText,
               back_text: card.backText,
               difficulty_level: card.difficultyLevel,
@@ -364,9 +365,10 @@ export async function processDocument(
 
         // Save questions - check for errors
         if (questions.length > 0) {
-          const { error: questionsError } = await supabase.from('exam_questions').insert(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: questionsError } = await (supabase.from('exam_questions') as any).insert(
             questions.map(q => ({
-              topic_id: savedTopic.id,
+              topic_id: (savedTopic as { id: string }).id,
               question_type: q.questionType,
               question_text: q.questionText,
               correct_answer: q.correctAnswer,
@@ -385,9 +387,12 @@ export async function processDocument(
 
         // Save explanations - check for errors
         if (explanations.length > 0) {
-          const { error: explanationsError } = await supabase.from('concept_explanations').insert(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: explanationsError } = await (
+            supabase.from('concept_explanations') as any
+          ).insert(
             explanations.map(exp => ({
-              topic_id: savedTopic.id,
+              topic_id: (savedTopic as { id: string }).id,
               explanation_level: exp.explanationLevel,
               explanation_text: exp.explanationText,
               ai_generated: true,
@@ -432,7 +437,8 @@ export async function processDocument(
         )
       }
       if (terms.length > 0 && documentId) {
-        const { error: vocabularyError } = await supabase.from('vocabulary_terms').insert(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: vocabularyError } = await (supabase.from('vocabulary_terms') as any).insert(
           terms.map(term => ({
             document_id: documentId!,
             term: term.term,
@@ -451,8 +457,8 @@ export async function processDocument(
       }
 
       // Update document status
-      const { error: statusUpdateError } = await supabase
-        .from('documents')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: statusUpdateError } = await (supabase.from('documents') as any)
         .update({
           processing_status: 'completed',
           processed_at: new Date().toISOString(),
@@ -497,8 +503,8 @@ export async function processDocument(
     // Update document status to failed if document was created
     if (documentId) {
       try {
-        await supabase
-          .from('documents')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('documents') as any)
           .update({
             processing_status: 'failed',
           })
