@@ -26,8 +26,7 @@ export interface TokenUsage {
  */
 async function callAI(
   prompt: string, 
-  model = 'anthropic/claude-3.5-sonnet',
-  operationType?: string
+  model = 'anthropic/claude-3.5-sonnet'
 ): Promise<{
   content: string
   tokenUsage?: TokenUsage
@@ -123,7 +122,7 @@ ${text.substring(0, 100000)} // Limit to prevent token limits
 
 Only return valid JSON, no other text.`
 
-  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet', 'extract_topics')
+  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet')
 
   if (error) {
     return { topics: [], error }
@@ -183,7 +182,7 @@ Return as JSON array:
 
 Only return valid JSON, no other text.`
 
-  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet', 'generate_flashcards')
+  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet')
 
   if (error) {
     return { flashcards: [], error }
@@ -244,7 +243,7 @@ Return as JSON array:
 
 Only return valid JSON, no other text.`
 
-  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet', 'generate_questions')
+  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet')
 
   if (error) {
     return { questions: [], error }
@@ -308,7 +307,7 @@ ${text.substring(0, 50000)}
 
 Only return valid JSON, no other text.`
 
-  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet', 'generate_vocabulary')
+  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet')
 
   if (error) {
     return { terms: [], error }
@@ -378,7 +377,7 @@ Return as JSON array:
 
 Only return valid JSON, no other text.`
 
-  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet', 'generate_explanations')
+  const { content, tokenUsage, error } = await callAI(prompt, 'anthropic/claude-3.5-sonnet')
 
   if (error) {
     return { explanations: [], error }

@@ -23,7 +23,6 @@ export function BuyCreditsModal({ open, onOpenChange, onPurchase }: BuyCreditsMo
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
-  const [countryCode, setCountryCode] = useState<string | undefined>()
 
   useEffect(() => {
     if (open) {
@@ -39,7 +38,6 @@ export function BuyCreditsModal({ open, onOpenChange, onPurchase }: BuyCreditsMo
 
       // Get user's country code from profile
       // TODO: Fetch from user_profiles table
-      const { data: profile } = await getCurrentUser() // Simplified - should fetch profile
       const userCountryCode = undefined // TODO: Get from profile
 
       const { packages: creditPackages, error } = await getCreditPackages(userCountryCode)
@@ -49,7 +47,6 @@ export function BuyCreditsModal({ open, onOpenChange, onPurchase }: BuyCreditsMo
       }
 
       setPackages(creditPackages)
-      setCountryCode(userCountryCode)
     } catch (error) {
       console.error('Error loading packages:', error)
     } finally {

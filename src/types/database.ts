@@ -358,13 +358,316 @@ export interface Database {
         }
         Relationships: []
       }
-      // Add more table types as needed
+      user_credits: {
+        Row: {
+          id: string
+          user_id: string
+          balance: number
+          lifetime_earned: number
+          lifetime_spent: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          balance?: number
+          lifetime_earned?: number
+          lifetime_spent?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          balance?: number
+          lifetime_earned?: number
+          lifetime_spent?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          transaction_type: 'purchase' | 'refund' | 'processing' | 'generation' | 'bonus' | 'gift' | 'adjustment'
+          reference_type: string | null
+          reference_id: string | null
+          description: string
+          metadata: Json
+          balance_after: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          transaction_type: 'purchase' | 'refund' | 'processing' | 'generation' | 'bonus' | 'gift' | 'adjustment'
+          reference_type?: string | null
+          reference_id?: string | null
+          description: string
+          metadata?: Json
+          balance_after: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          transaction_type?: 'purchase' | 'refund' | 'processing' | 'generation' | 'bonus' | 'gift' | 'adjustment'
+          reference_type?: string | null
+          reference_id?: string | null
+          description?: string
+          metadata?: Json
+          balance_after?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      credit_packages: {
+        Row: {
+          id: string
+          name: string
+          credits: number
+          price_amount: string
+          price_currency: 'USD' | 'NGN'
+          country_code: string | null
+          is_active: boolean
+          display_order: number
+          bonus_credits: number
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          credits: number
+          price_amount: string
+          price_currency?: 'USD' | 'NGN'
+          country_code?: string | null
+          is_active?: boolean
+          display_order?: number
+          bonus_credits?: number
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          credits?: number
+          price_amount?: string
+          price_currency?: 'USD' | 'NGN'
+          country_code?: string | null
+          is_active?: boolean
+          display_order?: number
+          bonus_credits?: number
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      document_processing_jobs: {
+        Row: {
+          id: string
+          document_id: string
+          user_id: string
+          estimated_credits: number
+          actual_credits: number | null
+          processing_type: 'initial' | 'regenerate_flashcards' | 'regenerate_questions' | 'regenerate_explanations' | 'regenerate_vocabulary'
+          status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+          credits_deducted_at: string | null
+          refunded_at: string | null
+          error_message: string | null
+          metadata: Json
+          total_tokens: number | null
+          prompt_tokens: number | null
+          completion_tokens: number | null
+          ai_model: string | null
+          estimated_cost_usd: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          document_id: string
+          user_id: string
+          estimated_credits: number
+          actual_credits?: number | null
+          processing_type: 'initial' | 'regenerate_flashcards' | 'regenerate_questions' | 'regenerate_explanations' | 'regenerate_vocabulary'
+          status?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+          credits_deducted_at?: string | null
+          refunded_at?: string | null
+          error_message?: string | null
+          metadata?: Json
+          total_tokens?: number | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          ai_model?: string | null
+          estimated_cost_usd?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          document_id?: string
+          user_id?: string
+          estimated_credits?: number
+          actual_credits?: number | null
+          processing_type?: 'initial' | 'regenerate_flashcards' | 'regenerate_questions' | 'regenerate_explanations' | 'regenerate_vocabulary'
+          status?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+          credits_deducted_at?: string | null
+          refunded_at?: string | null
+          error_message?: string | null
+          metadata?: Json
+          total_tokens?: number | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          ai_model?: string | null
+          estimated_cost_usd?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_operation_tokens: {
+        Row: {
+          id: string
+          processing_job_id: string | null
+          document_id: string
+          user_id: string
+          operation_type: 'extract_topics' | 'generate_flashcards' | 'generate_questions' | 'generate_vocabulary' | 'generate_explanations'
+          prompt_tokens: number
+          completion_tokens: number
+          total_tokens: number
+          ai_model: string
+          estimated_cost_usd: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          processing_job_id?: string | null
+          document_id: string
+          user_id: string
+          operation_type: 'extract_topics' | 'generate_flashcards' | 'generate_questions' | 'generate_vocabulary' | 'generate_explanations'
+          prompt_tokens?: number
+          completion_tokens?: number
+          total_tokens?: number
+          ai_model: string
+          estimated_cost_usd?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          processing_job_id?: string | null
+          document_id?: string
+          user_id?: string
+          operation_type?: 'extract_topics' | 'generate_flashcards' | 'generate_questions' | 'generate_vocabulary' | 'generate_explanations'
+          prompt_tokens?: number
+          completion_tokens?: number
+          total_tokens?: number
+          ai_model?: string
+          estimated_cost_usd?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      token_usage_summary: {
+        Row: {
+          operation_type: string
+          operation_count: number
+          total_prompt_tokens: number
+          total_completion_tokens: number
+          total_tokens: number
+          total_cost_usd: string
+          avg_tokens_per_operation: string
+          avg_cost_per_operation: string
+          first_operation: string
+          last_operation: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      document_token_usage: {
+        Row: {
+          document_id: string
+          document_title: string
+          user_id: string
+          operation_count: number
+          total_prompt_tokens: number
+          total_completion_tokens: number
+          total_tokens: number
+          total_cost_usd: string
+          credits_charged: number | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      token_usage_summary: {
+        Row: {
+          operation_type: string
+          operation_count: number
+          total_prompt_tokens: number
+          total_completion_tokens: number
+          total_tokens: number
+          total_cost_usd: string
+          avg_tokens_per_operation: string
+          avg_cost_per_operation: string
+          first_operation: string
+          last_operation: string
+        }
+      }
+      document_token_usage: {
+        Row: {
+          document_id: string
+          document_title: string
+          user_id: string
+          operation_count: number
+          total_prompt_tokens: number
+          total_completion_tokens: number
+          total_tokens: number
+          total_cost_usd: string
+          credits_charged: number | null
+        }
+      }
     }
     Functions: {
-      [_ in never]: never
+      deduct_credits_from_user: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_transaction_type: string
+          p_description: string
+          p_reference_type?: string | null
+          p_reference_id?: string | null
+          p_metadata?: Json
+        }
+        Returns: number
+      }
+      add_credits_to_user: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_transaction_type: string
+          p_description: string
+          p_reference_type?: string | null
+          p_reference_id?: string | null
+          p_metadata?: Json
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

@@ -17,7 +17,6 @@ interface CreditEstimateProps {
 
 export function CreditEstimate({ estimate, currentBalance, className }: CreditEstimateProps) {
   const hasEnoughCredits = currentBalance >= estimate.total
-  const isLowBalance = currentBalance < estimate.total && currentBalance < 50
 
   return (
     <Card className={cn('border-dashed', className)}>
@@ -28,7 +27,7 @@ export function CreditEstimate({ estimate, currentBalance, className }: CreditEs
             Estimated Cost
           </CardTitle>
           <Badge 
-            variant={hasEnoughCredits ? 'default' : 'destructive'}
+            variant={hasEnoughCredits ? 'default' : 'warning'}
             className={cn(
               hasEnoughCredits && 'bg-green-500 hover:bg-green-600',
               !hasEnoughCredits && 'bg-amber-500 hover:bg-amber-600'
